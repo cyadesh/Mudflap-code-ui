@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mudflap — Driver Auth Code Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:       #00BA7F;
+      --green-dark:  #009969;
+      --green-light: #e6f9f3;
+      --bg:          #f4f6f9;
+      --surface:     #ffffff;
+      --border:      #e2e8f0;
+      --text:        #1a2332;
+      --muted:       #64748b;
+      --danger:      #ef4444;
+      --radius:      12px;
+      --shadow:      0 2px 16px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    header .badge {
+      background: var(--green-light);
+      color: var(--green-dark);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--green);
+    }
+
+    /* ── Page layout ── */
+    main {
+      width: 100%;
+      max-width: 520px;
+      padding: 32px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    h1 span { color: var(--green); }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Form ── */
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .field:last-of-type { margin-bottom: 0; }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .input-wrap { position: relative; }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(0,186,127,.15);
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    .toggle-pw:hover { color: var(--green); }
+
+    input[type="password"] { padding-right: 38px; }
+
+    /* ── Button ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 13px 20px;
+      background: var(--green);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 4px 12px rgba(0,186,127,.35);
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--green-dark);
+      box-shadow: 0 6px 16px rgba(0,186,127,.45);
+    }
+
+    .btn:active:not(:disabled) { transform: scale(.98); }
+
+    .btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .btn svg { flex-shrink: 0; }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    /* ── Error banner ── */
+    .error-banner {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--danger);
+      margin-top: 12px;
+      line-height: 1.4;
+    }
+
+    .error-banner.show { display: block; }
+
+    /* ── Auth code history ── */
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-header .clear-btn {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: inherit;
+      transition: color .15s, background .15s;
+    }
+
+    .history-header .clear-btn:hover {
+      color: var(--danger);
+      background: #fef2f2;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .empty-state svg { opacity: .35; margin-bottom: 8px; }
+
+    /* ── Code item ── */
+    .code-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .code-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      transition: border-color .2s, box-shadow .2s;
+      animation: slideIn .25s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .code-item.latest {
+      border-color: var(--green);
+      background: var(--green-light);
+      box-shadow: 0 0 0 3px rgba(0,186,127,.12);
+    }
+
+    .code-item .left { display: flex; flex-direction: column; gap: 3px; }
+
+    .code-value {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .code-item.latest .code-value { color: var(--green-dark); }
+
+    .code-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .latest-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--green);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all .15s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .copy-btn:hover { border-color: var(--green); color: var(--green); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); background: var(--green-light); }
+
+    /* ── Footer ── */
+    footer {
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+      padding-bottom: 24px;
+    }
+
+    /* ── Activation modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(0,0,0,.25);
+      width: 100%;
+      max-width: 460px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      background: var(--green);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-header span {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .modal-body {
+      padding: 16px 18px 10px;
+    }
+
+    .modal-body p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .modal-body p strong { color: var(--text); }
+
+    .modal-iframe {
+      width: 100%;
+      height: 210px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .modal-footer {
+      padding: 12px 18px 16px;
+    }
+
+    .btn-modal-done {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--green);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s;
+      box-shadow: 0 4px 12px rgba(0,186,127,.3);
+    }
+
+    .btn-modal-done:hover { background: var(--green-dark); }
+
+    /* ── Responsive ── */
+    @media (max-width: 400px) {
+      header { padding: 12px 16px; }
+      .code-value { font-size: 22px; letter-spacing: 3px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header>
+    <!-- Mudflap horizontal logo (inline SVG, brand color #00BA7F) -->
+    <svg width="120" height="21" viewBox="0 0 184 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Mudflap logo">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M60.3438 5.53088V25.9066H55.0242V21.0459C55.0242 20.0365 55.0242 19.0836 55.0524 18.1788C55.0806 17.2739 55.1004 16.4285 55.1399 15.6339C54.9837 16.0241 54.8105 16.4511 54.6204 16.9148C54.4303 17.3785 54.2279 17.8498 54.0133 18.3286C53.7987 18.798 53.587 19.2693 53.378 19.7424L52.8133 20.9781L50.1535 26.6333L47.4993 20.9781C47.3271 20.6105 47.1322 20.1977 46.9346 19.7396C46.7369 19.2815 46.5082 18.815 46.2993 18.3258C46.0903 17.8366 45.8842 17.387 45.6922 16.912C45.5002 16.437 45.3251 16.0156 45.1727 15.6339C45.2122 16.4275 45.2414 17.2758 45.2602 18.1788C45.2771 19.0808 45.2884 20.0365 45.2884 21.0431V25.9066H39.9434V5.53371H45.1162L47.6151 10.9769C47.9257 11.6357 48.2137 12.2719 48.4876 12.8855C48.7614 13.4991 48.9986 14.0674 49.2132 14.599C49.4278 15.1306 49.6396 15.6141 49.7921 16.0411C49.9282 16.3936 50.0451 16.7532 50.1422 17.1184C50.4132 16.2814 50.7238 15.4605 51.074 14.6556C51.5201 13.598 52.0622 12.3727 52.7004 10.9797L55.1992 5.53654L60.3438 5.53088ZM70.105 5.53088V17.2061C70.105 18.4672 70.3619 19.4559 70.8758 20.1722C71.3897 20.8885 72.1982 21.2477 73.3013 21.2495C74.4044 21.2495 75.2035 20.8904 75.6985 20.1722C76.1936 19.454 76.4411 18.4653 76.4411 17.2061V5.53371H82.1956V17.2061C82.2317 18.6136 82.0018 20.0152 81.518 21.3372C81.1304 22.392 80.4991 23.34 79.6756 24.1038C78.8522 24.8675 77.8599 25.4252 76.78 25.7313C75.6236 26.0694 74.424 26.2362 73.2194 26.2261C72.0194 26.2374 70.8243 26.0706 69.673 25.7313C68.6275 25.425 67.6663 24.8823 66.8635 24.145C66.0396 23.3568 65.4077 22.3893 65.0169 21.3174C64.5426 19.9932 64.3167 18.5927 64.3505 17.1863V5.53371L70.105 5.53088ZM93.3262 5.53088C94.7897 5.51667 96.2493 5.68382 97.6718 6.02854C98.8867 6.31806 100.016 6.8917 100.967 7.70248C101.916 8.5485 102.639 9.61731 103.073 10.8128C103.602 12.3582 103.844 13.9873 103.788 15.6198C103.827 17.2634 103.59 18.9019 103.085 20.4663C102.673 21.6881 101.946 22.7796 100.978 23.6304C99.9813 24.4757 98.8021 25.0778 97.5334 25.3891C96.1521 25.7275 94.7369 25.9078 93.3149 25.9264H86.2051V5.53371L93.3262 5.53088ZM132.009 5.53088V20.9894H141.017V25.9123H126.314V5.53371L132.009 5.53088ZM123.31 5.53088V10.3378H112.798V13.1513H119.156V17.9328H112.798V25.9066H107.179V5.53371L123.31 5.53088ZM156.044 5.53088L163.416 25.9038H157.315L156.213 22.3382H150.109L149.008 25.9179H142.968L150.34 5.54502L156.044 5.53088ZM175.075 5.53088C176.166 5.51695 177.254 5.63563 178.316 5.88433C179.225 6.09351 180.081 6.48923 180.829 7.04648C181.539 7.60048 182.094 8.32784 182.442 9.1587C182.843 10.1502 183.035 11.2139 183.006 12.2832C183.04 13.4107 182.831 14.5323 182.394 15.5717C182.014 16.4294 181.422 17.1758 180.674 17.7405C179.885 18.3214 178.984 18.7316 178.028 18.945C176.925 19.1915 175.796 19.3092 174.666 19.2957H171.842V25.9066H166.311V5.53371L175.075 5.53088ZM93.3121 10.3378H91.9003V21.0771H93.106C93.861 21.0893 94.614 20.9941 95.3423 20.7943C95.9224 20.6348 96.4497 20.3234 96.8699 19.8923C97.2907 19.4227 97.5826 18.8517 97.7169 18.2353C97.9147 17.4018 98.0096 16.5471 97.9993 15.6905C98.0109 14.8787 97.9285 14.0684 97.7536 13.2757C97.6298 12.6602 97.3607 12.0833 96.9687 11.5933C96.5785 11.1515 96.0759 10.8241 95.5145 10.646C94.7991 10.4299 94.0535 10.3306 93.3065 10.352L93.3121 10.3378ZM152.946 12.4415C152.87 12.7724 152.777 13.1315 152.664 13.5189L152.314 14.828C152.176 15.3116 152.032 15.8743 151.848 16.5246L151.47 17.8649H154.847L154.468 16.5246C154.29 15.8658 154.138 15.2946 154.002 14.8111C153.867 14.3276 153.754 13.8893 153.652 13.5019C153.551 13.1145 153.452 12.7639 153.37 12.4472C153.288 12.1305 153.218 11.794 153.144 11.4349C153.091 11.7705 153.025 12.106 152.946 12.4415ZM174.897 10.1427H171.828V14.7036H174.807C175.741 14.7036 176.405 14.5085 176.783 14.1183C176.993 13.8813 177.153 13.6045 177.254 13.3043C177.355 13.0041 177.395 12.6867 177.371 12.3709C177.396 11.7758 177.194 11.1935 176.806 10.7422C176.448 10.3369 175.812 10.1342 174.897 10.1342V10.1427Z" fill="#00BA7F"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M15.9759 2.19321e-05C15.6112 -0.00115609 15.25 0.0702259 14.9131 0.210023C14.5762 0.34982 14.2704 0.555246 14.0135 0.814372L0.813195 14.0306C0.292475 14.5528 0 15.2606 0 15.9986C0 16.7366 0.292475 17.4444 0.813195 17.9666L14.0107 31.1857C14.5321 31.7071 15.239 32 15.9759 32C16.7128 32 17.4197 31.7071 17.9411 31.1857L31.1414 17.9666C31.6621 17.4444 31.9546 16.7366 31.9546 15.9986C31.9546 15.2606 31.6621 14.5528 31.1414 14.0306L17.9439 0.814372C17.6861 0.554948 17.3793 0.349379 17.0415 0.209588C16.7036 0.0697964 16.3414 -0.00143589 15.9759 2.19321e-05Z" fill="#00BA7F"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M15.9767 2.40616C16.082 2.40527 16.1834 2.44589 16.259 2.51926L29.4509 15.7213C29.4879 15.7584 29.5172 15.8026 29.5371 15.8511C29.557 15.8996 29.567 15.9516 29.5666 16.0041C29.5672 16.0566 29.5572 16.1087 29.5373 16.1572C29.5174 16.2058 29.488 16.2499 29.4509 16.2869L16.2534 29.4918C16.2164 29.529 16.1724 29.5584 16.1239 29.5784C16.0754 29.5983 16.0234 29.6083 15.971 29.6077C15.9186 29.6081 15.8667 29.598 15.8182 29.5781C15.7698 29.5582 15.7257 29.5289 15.6887 29.4918L2.50249 16.2756C2.4657 16.2384 2.43674 16.1942 2.41733 16.1457C2.39793 16.0971 2.38848 16.0451 2.38954 15.9928C2.38864 15.9405 2.39816 15.8886 2.41756 15.84C2.43695 15.7915 2.46583 15.7473 2.50249 15.71L15.7 2.50513C15.7777 2.43663 15.8789 2.40114 15.9823 2.40616H15.9767ZM15.9823 1.30622C15.7853 1.30437 15.5899 1.34193 15.4076 1.4167C15.2253 1.49148 15.0598 1.60196 14.9207 1.74167L1.74294 14.9353C1.60404 15.0737 1.49382 15.2383 1.41861 15.4196C1.3434 15.6008 1.30469 15.7951 1.30469 15.9914C1.30469 16.1877 1.3434 16.382 1.41861 16.5632C1.49382 16.7445 1.60404 16.909 1.74294 17.0475L14.915 30.2552C15.195 30.5348 15.5742 30.6918 15.9696 30.6918C16.365 30.6918 16.7442 30.5348 17.0242 30.2552L30.2132 17.0645C30.4924 16.7841 30.6492 16.4043 30.6492 16.0084C30.6492 15.6124 30.4924 15.2326 30.2132 14.9522L17.0412 1.74167C16.9016 1.60188 16.7355 1.49137 16.5527 1.4166C16.3699 1.34183 16.1741 1.30431 15.9767 1.30622H15.9823Z" fill="white"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M17.2237 7.38876L15.7244 12.6311H22.8229L13.1521 24.3007C13.1294 24.3425 13.0986 24.3795 13.0615 24.4093C13.0244 24.4391 12.9817 24.4612 12.936 24.4744C12.8903 24.4876 12.8424 24.4915 12.7952 24.4859C12.7479 24.4804 12.7022 24.4654 12.6608 24.442C12.5765 24.3945 12.5144 24.3155 12.488 24.2223C12.4615 24.1291 12.4729 24.0292 12.5196 23.9444L14.7644 16.0271H9.11719L16.5715 7.04944C16.5937 7.00656 16.6242 6.96848 16.6611 6.93738C16.6981 6.90628 16.7408 6.88278 16.7868 6.8682C16.8328 6.85363 16.8812 6.84828 16.9293 6.85245C16.9774 6.85662 17.0242 6.87023 17.067 6.89251C17.1098 6.91479 17.1479 6.9453 17.1789 6.9823C17.21 7.01929 17.2335 7.06205 17.248 7.10813C17.2626 7.15421 17.2679 7.20271 17.2637 7.25086C17.2596 7.29901 17.246 7.34587 17.2237 7.38876Z" fill="white"/>
+    </svg>
+    <span class="badge">POS Sandbox</span>
+  </header>
+
+  <!-- ── Main ── -->
+  <main>
+    <!-- Activation modal — shown on first Generate click when opened as file:// -->
+    <div class="modal-overlay" id="activationModal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>One-time proxy activation</span>
+        </div>
+        <div class="modal-body">
+          <p>Tap <strong>"Request temporary access to the demo server"</strong> in the box below, then tap <strong>"Done"</strong>.</p>
+          <iframe class="modal-iframe" src="https://cors-anywhere.herokuapp.com/corsdemo" title="Proxy activation"></iframe>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-modal-done" onclick="confirmActivated()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Done — Generate My Code
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h1>Driver <span>Auth Code</span> Generator</h1>
+      <p class="subtitle">Generate one-time authorization codes for driver fuel payments.</p>
+    </div>
+
+    <!-- Config card -->
+    <div class="card">
+      <p class="card-title">API Configuration</p>
+
+      <div class="field">
+        <label for="apiToken">Bearer Token</label>
+        <div class="input-wrap">
+          <input type="password" id="apiToken"
+            value="hvHbruIpT2eyvcr8AlKK7Ww35aRvvX8M2ysIvc_k5e0"
+            autocomplete="off" spellcheck="false" />
+          <button class="toggle-pw" type="button" aria-label="Toggle token visibility"
+            onclick="togglePw()">&#128065;</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="merchantId">Merchant ID</label>
+        <input type="text" id="merchantId" value="SID84335" spellcheck="false" />
+      </div>
+
+      <div class="field">
+        <label for="driverId">Driver ID</label>
+        <input type="number" id="driverId" value="253169" min="1" />
+      </div>
+    </div>
+
+    <!-- Generate button -->
+    <button class="btn" id="genBtn" onclick="generateCode()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      Generate Driver Auth Code
+    </button>
+
+    <!-- Error banner -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- History card -->
+    <div class="card">
+      <div class="history-header">
+        <p class="card-title" style="margin-bottom:0">Recent Auth Codes</p>
+        <button class="clear-btn" onclick="clearHistory()">Clear</button>
+      </div>
+
+      <div style="margin-top:16px" id="historyContainer">
+        <div class="empty-state" id="emptyState">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <p>No codes generated yet.</p>
+          <p style="margin-top:4px;color:#94a3b8">Hit the button above to create one.</p>
+        </div>
+        <div class="code-list" id="codeList"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>Mudflap Staging Sandbox &middot; Codes are single-use</footer>
+
+  <script>
+    const STAGING_URL   = 'https://staging.sandbox.mudflapinc.com/pos/api/v1/authorizations/codes';
+    const API_URL       = 'https://cors-anywhere.herokuapp.com/' + STAGING_URL;
+    const ACTIVATED_KEY = 'mudflap_proxy_activated';
+
+    const needsActivation = () =>
+      window.location.protocol === 'file:' && !localStorage.getItem(ACTIVATED_KEY);
+
+    function confirmActivated() {
+      localStorage.setItem(ACTIVATED_KEY, '1');
+      document.getElementById('activationModal').classList.remove('show');
+      generateCode();
+    }
+    const MAX_HISTORY = 3;
+
+    let history = [];
+
+    function togglePw() {
+      const inp = document.getElementById('apiToken');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorBanner');
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+
+    function hideError() {
+      document.getElementById('errorBanner').classList.remove('show');
+    }
+
+    function setLoading(on) {
+      const btn = document.getElementById('genBtn');
+      if (on) {
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Generating…';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Generate Driver Auth Code`;
+      }
+    }
+
+    async function generateCode() {
+      if (needsActivation()) {
+        document.getElementById('activationModal').classList.add('show');
+        return;
+      }
+      hideError();
+
+      const token      = document.getElementById('apiToken').value.trim();
+      const merchantId = document.getElementById('merchantId').value.trim();
+      const driverId   = parseInt(document.getElementById('driverId').value.trim(), 10);
+
+      if (!token)             { showError('Bearer token is required.'); return; }
+      if (!merchantId)        { showError('Merchant ID is required.'); return; }
+      if (!driverId || driverId < 1) { showError('A valid Driver ID is required.'); return; }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            authorization: {
+              total:       1,
+              merchant_id: merchantId,
+              driver_id:   driverId,
+            },
+          }),
+        });
+
+        if (!res.ok) {
+          let detail = '';
+          try { const j = await res.json(); detail = j.message || j.error || JSON.stringify(j); } catch (_) {}
+          throw new Error(`HTTP ${res.status}${detail ? ': ' + detail : ''}`);
+        }
+
+        const data = await res.json();
+        const codes = data.codes;
+
+        if (!Array.isArray(codes) || codes.length === 0) {
+          throw new Error('Unexpected response — no codes returned.');
+        }
+
+        const entry = { code: codes[0], ts: new Date() };
+        history.unshift(entry);
+        if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+
+        renderHistory();
+      } catch (err) {
+        const isNetworkErr = err instanceof TypeError || err.message === 'Failed to fetch' || err.message.includes('NetworkError');
+        if (isNetworkErr && window.location.protocol === 'file:') {
+          localStorage.removeItem(ACTIVATED_KEY);
+          showError('Could not reach the API. Please tap "Generate Driver Auth Code" again to re-activate the proxy.');
+        } else {
+          showError('Request failed: ' + err.message);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function clearHistory() {
+      history = [];
+      renderHistory();
+    }
+
+    function copyCode(code, btn) {
+      navigator.clipboard.writeText(code).then(() => {
+        btn.classList.add('copied');
+        btn.textContent = '✓ Copied';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy`;
+        }, 2000);
+      });
+    }
+
+    function formatTs(date) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        + ' · ' + date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderHistory() {
+      const list  = document.getElementById('codeList');
+      const empty = document.getElementById('emptyState');
+
+      if (history.length === 0) {
+        list.innerHTML  = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.innerHTML = history.map((entry, i) => `
+        <div class="code-item ${i === 0 ? 'latest' : ''}">
+          <div class="left">
+            <div class="code-value">${entry.code}</div>
+            <div class="code-meta">
+              ${i === 0 ? '<span class="latest-badge">&#9679; Latest</span>' : ''}
+              ${formatTs(entry.ts)}
+            </div>
+          </div>
+          <button class="copy-btn" onclick="copyCode('${entry.code}', this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // Init
+    renderHistory();
+  </script>
+</body>
+</html>
